@@ -1,0 +1,208 @@
+html
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Eletiva: O Seguro Morreu de Velho</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; cursor: none; }
+        :root {
+            --primary: #003366; 
+            --accent: #ff8c00; 
+            --bg: #f4f7fa;
+            --white: #ffffff;
+            --text: #1a202c;
+            --text-muted: #4a5568;
+            --ease-smooth: cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Efeito de Fundo - Linhas de Segurança */
+        #bgCanvas { position: fixed; inset: 0; z-index: -1; opacity: 0.15; pointer-events: none; }
+
+        /* Cursores Customizados */
+        #cursor {
+            width: 12px; height: 12px; background: var(--primary);
+            border-radius: 50%; position: fixed; pointer-events: none; z-index: 10000;
+            transform: translate(-50%, -50%); transition: width 0.2s, height 0.2s;
+        }
+        #cursor-follower {
+            width: 40px; height: 40px; border: 2px solid var(--accent);
+            border-radius: 50%; position: fixed; pointer-events: none; z-index: 9999;
+            transform: translate(-50%, -50%); transition: transform 0.1s ease-out;
+        }
+
+        /* Container Principal */
+        .stage {
+            width: 100%; height: 100vh; display: flex; align-items: center; justify-content: center;
+        }
+
+        .slider-container { width: 95%; max-width: 1300px; height: 80vh; position: relative; }
+
+        .slide {
+            position: absolute; inset: 0; display: grid; grid-template-columns: 1fr 1fr;
+            align-items: center; gap: 40px; opacity: 0; visibility: hidden;
+            transform: translateY(30px); transition: all 0.7s var(--ease-smooth);
+        }
+        .slide.active { opacity: 1; visibility: visible; transform: translateY(0); }
+        .slide.full { grid-template-columns: 1fr; text-align: center; }
+
+        /* Estilo dos Paineis */
+        .info { padding: 20px; }
+        .badge {
+            display: inline-block; padding: 5px 15px; background: var(--accent);
+            color: white; border-radius: 4px; font-size: 0.8rem; font-weight: 700;
+            margin-bottom: 20px; text-transform: uppercase;
+        }
+        h1 { font-size: 3rem; color: var(--primary); margin-bottom: 20px; line-height: 1.1; }
+        .card {
+            background: white; padding: 30px; border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.05);
+            line-height: 1.6; font-size: 1.1rem;
+        }
+
+        /* Layout de Imagens */
+        .visual { display: flex; flex-direction: column; gap: 15px; align-items: center; }
+        .img-box {
+            width: 100%; border-radius: 12px; overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1); background: #ddd;
+        }
+        .img-box img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; width: 100%; }
+        .grid-4 { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 10px; width: 100%; height: 500px; }
+
+        /* Gráficos em CSS (Slide 15 e 16) */
+        .chart-container { display: flex; align-items: flex-end; gap: 8px; height: 200px; margin-top: 20px; }
+        .bar { flex: 1; background: var(--primary); border-radius: 4px 4px 0 0; position: relative; }
+        .bar::before { content: attr(data-val); position: absolute; top: -25px; left: 50%; transform: translateX(-50%); font-size: 0.7rem; font-weight: 700; }
+
+        /* UI de Navegação */
+        .progress-wrap { position: fixed; top: 0; left: 0; width: 100%; height: 6px; background: #eee; z-index: 1000; }
+        .progress-bar { height: 100%; background: var(--accent); width: 0%; transition: width 0.4s; }
+
+        .nav-bar {
+            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+            display: flex; align-items: center; gap: 40px; padding: 12px 35px;
+            background: white; border-radius: 50px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); z-index: 1000;
+        }
+        .nav-btn { background: none; border: none; color: var(--primary); font-size: 1.4rem; transition: 0.3s; }
+        .nav-btn:hover { color: var(--accent); transform: scale(1.2); }
+        .count { font-family: 'Inter', sans-serif; font-weight: 700; color: var(--primary); font-size: 1.1rem; }
+
+        @media (max-width: 1000px) {
+            .slide { grid-template-columns: 1fr; overflow-y: auto; padding-top: 50px; }
+            h1 { font-size: 2rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="progress-wrap"><div class="progress-bar" id="pBar"></div></div>
+    <canvas id="bgCanvas"></canvas>
+    <div id="cursor"></div>
+    <div id="cursor-follower"></div>
+
+    <div class="stage">
+        <div class="slider-container" id="slider"></div>
+    </div>
+
+    <nav class="nav-bar">
+        <button class="nav-btn" onclick="move(-1)"><i class="fa-solid fa-arrow-left"></i></button>
+        <div class="count" id="counter">1 / 29</div>
+        <button class="nav-btn" onclick="move(1)"><i class="fa-solid fa-arrow-right"></i></button>
+    </nav>
+
+    <script>
+        (function(){
+            "use strict";
+
+            const data = [
+                { layout: "full", badge: "Capa", title: "Eletiva: \"O Seguro Morreu de Velho\"", content: "<p>Por Prof. Adriana Marques e Prof. Samuel Sampaio</p>" },
+                { layout: "split", badge: "Identificação", title: "Título da Eletiva", content: "<div class='card'><b>1. Componente:</b> Geografia e Matemática<br><b>2. Área:</b> Responsabilidade Social<br><b>3. Subárea:</b> Participação Social</div>" },
+                { layout: "split", badge: "Objetivo", title: "Objetivo Geral", content: "<div class='card'>Desenvolver uma compreensão crítica sobre segurança pública, promovendo cultura de paz e respeito aos direitos humanos.</div>" },
+                { layout: "split", badge: "Objetivo", title: "Objetivos Específicos", content: "<div class='card'>• Instruir sobre direitos e deveres.<br>• Incentivar ações comunitárias locais.</div>" },
+                { layout: "split", badge: "Objetivo", title: "Objetivos Específicos", content: "<div class='card'>• Fomentar respeito à diversidade.<br>• Cuidar da saúde mental e bem-estar.</div>" },
+                { layout: "split", badge: "Conceito", title: "Segurança Pública", content: "<div class='card'>Conjunto de ações que visam garantir a ordem social. É dever do Estado e responsabilidade de todos.</div>" },
+                { layout: "split", badge: "Lei", title: "Art. 144 da Constituição", content: "<div class='card' style='font-size:0.9rem'><i>'A segurança pública, dever do Estado, direito e responsabilidade de todos...'</i></div>" },
+                { layout: "split", badge: "Cidadania", title: "Cidadania e Cidadão", content: "<div class='card'><b>Cidadania:</b> Exercício de direitos e deveres.<br><b>Cidadão:</b> Indivíduo articulado em sociedade.</div>" },
+                { layout: "split", badge: "Órgãos", title: "Estrutura de Segurança", content: "<div class='card' style='font-size:0.85rem'><b>União:</b> PF, PRF, PFF.<br><b>Estados:</b> Polícia Civil, Militar e Bombeiros.</div>" },
+                { layout: "split", badge: "União", title: "Órgãos da União", content: "<div class='grid-2'><div class='img-box'><img src='assets/slide10.png' onerror='err(this)'></div><div class='img-box'><img src='assets/slide10.1.png' onerror='err(this)'></div></div>" },
+                { layout: "split", badge: "União", title: "Policiamento Federal", content: "<div class='visual'><div class='img-box'><img src='assets/slide11.png' onerror='err(this)'></div></div>" },
+                { layout: "split", badge: "Estados", title: "Órgãos Estaduais", content: "<div class='grid-2'><div class='img-box'><img src='assets/slide12.png' onerror='err(this)'></div><div class='img-box'><img src='assets/slide12.1.png' onerror='err(this)'></div></div>" },
+                { layout: "split", badge: "Estados", title: "Forças Estaduais", content: "<div class='visual'><div class='img-box'><img src='assets/slide13.png' onerror='err(this)'></div></div>" },
+                { layout: "full", badge: "Estatística", title: "DADOS ESTATÍSTICOS DE ACIDENTES DOMÉSTICOS", content: "" },
+                { layout: "split", badge: "Dados", title: "Mortes por Ano no Brasil", content: "<div class='chart-container'><div class='bar' style='height:60%' data-val='6.4k'></div><div class='bar' style='height:75%' data-val='7.7k'></div><div class='bar' style='height:82%' data-val='8.3k'></div><div class='bar' style='height:100%' data-val='10k'></div></div>" },
+                { layout: "split", badge: "Dados", title: "Gráfico de Porcentagens", content: "<div class='card'>Afogamento: 44,7%<br>Engasgo: 31,8%<br>Queimaduras: 10,9%<br>Quedas: 8,3%</div>" },
+                { layout: "split", badge: "Panorama", title: "Brasil 2023-2024", content: "<div class='card'>9,3 mil mortes por ano em residências. Média de 25 pessoas por dia. Quedas lideram.</div>" },
+                { layout: "split", badge: "Jovens", title: "Crianças e Adolescentes", content: "<div class='card'>456 mortes em 2024 (0-19 anos). Riscos respiratórios (213) e afogamentos (104).</div>" },
+                { layout: "split", badge: "Alvo", title: "Grupos Afetados", content: "<div class='card'><b>Idosos:</b> Quedas por fragilidade física.<br><b>Crianças:</b> Engasgos e queimaduras.</div>" },
+                { layout: "split", badge: "Dicas", title: "Prevenção: Quedas e Água", content: "<div class='card'>• Pisos secos e sem tapetes.<br>• Supervisão constante em piscinas e baldes.</div>" },
+                { layout: "split", badge: "Dicas", title: "Eletricidade e Socorro", content: "<div class='card'>• Protetores de tomadas.<br>• Aprenda manobras de RCP e desobstrução.</div>" },
+                { layout: "split", badge: "Prática", title: "Metodologia: Palestras", content: "<div class='grid-2'><div class='img-box'><img src='assets/slide22.png' onerror='err(this)'></div><div class='img-box'><img src='assets/slide22.1.png' onerror='err(this)'></div></div>" },
+                { layout: "split", badge: "Prática", title: "Metodologia: Treino", content: "<div class='grid-2'><div class='img-box'><img src='assets/slide23.png' onerror='err(this)'></div><div class='img-box'><img src='assets/slide23.1.png' onerror='err(this)'></div></div>" },
+                { layout: "split", badge: "Galeria", title: "Galeria de Fotos", content: "<div class='visual'><div class='img-box'><img src='assets/slide24.png' onerror='err(this)'></div></div>" },
+                { layout: "full", badge: "Fotos", title: "Registros de Atividades", content: "<div class='grid-4'><div class='img-box'><img src='assets/slide25.png' onerror='err(this)'></div><div class='img-box'><img src='assets/slide25.1.png' onerror='err(this)'></div><div class='img-box'><img src='assets/slide25.2.png' onerror='err(this)'></div><div class='img-box'><img src='assets/slide25.3.png' onerror='err(this)'></div></div>" },
+                { layout: "full", badge: "Fotos", title: "Momento 26", content: "<div class='visual' style='height:400px'><div class='img-box'><img src='assets/slide26.png' onerror='err(this)'></div></div>" },
+                { layout: "full", badge: "Fotos", title: "Momento 27", content: "<div class='visual' style='height:400px'><div class='img-box'><img src='assets/slide27.png' onerror='err(this)'></div></div>" },
+                { layout: "full", badge: "Fotos", title: "Momento 28", content: "<div class='visual' style='height:400px'><div class='img-box'><img src='assets/slide28.png' onerror='err(this)'></div></div>" },
+                { layout: "split", badge: "Fim", title: "Obrigado!", content: "<div class='visual'><div class='img-box'><img src='assets/slide29.png' onerror='err(this)'></div></div>" }
+            ];
+
+            const slider = document.getElementById('slider');
+            const counter = document.getElementById('counter');
+            const pBar = document.getElementById('pBar');
+            let idx = 0;
+
+            window.err = (el) => { el.src = "https://placehold.co/600x400?text=Adicione+Imagem"; };
+
+            function build() {
+                data.forEach((s, i) => {
+                    const d = document.createElement('div');
+                    d.className = `slide ${i===0?'active':''} ${s.layout}`;
+                    d.innerHTML = `<div class="info"><span class="badge">${s.badge}</span><h1>${s.title}</h1>${s.content}</div>`;
+                    slider.appendChild(d);
+                });
+            }
+
+            window.move = (step) => {
+                const slides = document.querySelectorAll('.slide');
+                slides[idx].classList.remove('active');
+                idx = Math.max(0, Math.min(slides.length - 1, idx + step));
+                slides[idx].classList.add('active');
+                counter.innerText = `${idx + 1} / 29`;
+                pBar.style.width = `${((idx + 1) / 29) * 100}%`;
+            };
+
+            // Efeitos de Mouse
+            const c = document.getElementById('cursor');
+            const f = document.getElementById('cursor-follower');
+            document.onmousemove = e => {
+                c.style.left = e.clientX+'px'; c.style.top = e.clientY+'px';
+                setTimeout(() => { f.style.left = e.clientX+'px'; f.style.top = e.clientY+'px'; }, 40);
+            };
+
+            document.onkeydown = e => {
+                if(e.key === "ArrowRight") move(1);
+                if(e.key === "ArrowLeft") move(-1);
+            };
+
+            build();
+        })();
+    </script>
+</body>
+</html>

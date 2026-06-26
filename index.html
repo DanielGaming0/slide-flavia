@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Eletiva: O Seguro Morreu de Velho</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; cursor: none; }
+        :root {
+            --primary: #003366; 
+            --accent: #ff8c00; 
+            --bg: #f4f7fa;
+            --white: #ffffff;
+            --text: #1a202c;
+            --text-muted: #4a5568;
+            --ease-smooth: cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #bgCanvas { position: fixed; inset: 0; z-index: -1; opacity: 0.15; pointer-events: none; }
+
+        /* Cursores */
+        #cursor {
+            width: 12px; height: 12px; background: var(--primary);
+            border-radius: 50%; position: fixed; pointer-events: none; z-index: 10000;
+            transform: translate(-50%, -50%); transition: width 0.2s, height 0.2s;
+        }
+        #cursor-follower {
+            width: 40px; height: 40px; border: 2px solid var(--accent);
+            border-radius: 50%; position: fixed; pointer-events: none; z-index: 9999;
+            transform: translate(-50%, -50%); transition: transform 0.1s ease-out;
+        }
+
+        .stage {
+            width: 100%; height: 100vh; display: flex; align-items: center; justify-content: center;
+        }
+
+        .slider-container { width: 98%; max-width: 1450px; height: 90vh; position: relative; }
+
+        .slide {
+            position: absolute; inset: 0; display: grid; 
+            grid-template-columns: 30% 70%; 
+            align-items: center; gap: 24px; opacity: 0; visibility: hidden;
+            transform: translateY(30px); transition: all 0.7s var(--ease-smooth);
+        }
+        .slide.active { opacity: 1; visibility: visible; transform: translateY(0); }
+        .slide.full { grid-template-columns: 1fr; text-align: center; }
+
+        .info { padding: 10px; text-align: left; }
+        .full .info { text-align: center; max-width: 900px; margin: 0 auto; }
+
+        .badge {
+            display: inline-block; padding: 5px 15px; background: var(--accent);
+            color: white; border-radius: 4px; font-size: 0.8rem; font-weight: 700;
+            margin-bottom: 15px; text-transform: uppercase;
+        }
+        h1 { font-size: 2.2rem; color: var(--primary); margin-bottom: 15px; line-height: 1.1; }
+        
+        .card {
+            background: white; padding: 25px; border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.05);
+            line-height: 1.5; font-size: 1rem; color: var(--text);
+        }
+        .full .card {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: left;
+        }
+
+        /* Layouts de Imagem */
+        .visual { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; padding: 0; }
+        
+        .img-single { width: 100%; height: 680px; border-radius: 15px; overflow: hidden; border: 5px solid white; box-shadow: 0 15px 40px rgba(0,0,0,0.15); }
+        .img-single img { width: 100%; height: 100%; object-fit: cover; }
+
+        .grid-grid { display: grid; gap: 12px; width: 100%; height: 720px; }
+        
+        .grid-3 { 
+            grid-template-columns: 1.2fr 1fr; 
+            grid-template-rows: 1fr 1fr; 
+        }
+        .grid-3 div:first-child { grid-row: span 2; }
+
+        .grid-5 { 
+            grid-template-columns: 1.3fr 1fr 1fr; 
+            grid-template-rows: 1fr 1fr; 
+        }
+        .grid-5 div:nth-child(1) { grid-row: span 2; }
+        
+        .grid-item { border-radius: 12px; overflow: hidden; border: 3px solid white; box-shadow: 0 8px 20px rgba(0,0,0,0.12); height: 100%; transition: transform 0.3s; }
+        .grid-item:hover { transform: scale(1.02); z-index: 10; }
+        .grid-item img { width: 100%; height: 100%; object-fit: cover; }
+
+        /* Interface de Navegação */
+        .progress-wrap { position: fixed; top: 0; left: 0; width: 100%; height: 6px; background: #eee; z-index: 1000; }
+        .progress-bar { height: 100%; background: var(--accent); width: 0%; transition: width 0.4s; }
+
+        .nav-bar {
+            position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%);
+            display: flex; align-items: center; gap: 40px; padding: 10px 35px;
+            background: white; border-radius: 50px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); z-index: 1000;
+        }
+        .nav-btn { background: none; border: none; color: var(--primary); font-size: 1.4rem; transition: 0.3s; }
+        .nav-btn:hover { color: var(--accent); transform: scale(1.2); }
+        .count { font-family: 'Inter', sans-serif; font-weight: 700; color: var(--primary); font-size: 1.1rem; }
+
+        @media (max-width: 1100px) {
+            .slide { grid-template-columns: 1fr; overflow-y: auto; padding-top: 40px; }
+            .grid-grid, .img-single { height: 450px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="progress-wrap"><div class="progress-bar" id="pBar"></div></div>
+    <canvas id="bgCanvas"></canvas>
+    <div id="cursor"></div>
+    <div id="cursor-follower"></div>
+
+    <div class="stage">
+        <div class="slider-container" id="slider"></div>
+    </div>
+
+    <nav class="nav-bar">
+        <button class="nav-btn" id="prevBtn"><i class="fa-solid fa-arrow-left"></i></button>
+        <div class="count" id="counter">1 / 14</div>
+        <button class="nav-btn" id="nextBtn"><i class="fa-solid fa-arrow-right"></i></button>
+    </nav>
+
+    <script>
+        (function(){
+            "use strict";
+
+            const canvas = document.getElementById('bgCanvas');
+            const ctx = canvas.getContext('2d');
+            let w = canvas.width = window.innerWidth;
+            let h = canvas.height = window.innerHeight;
+            const pts = Array.from({length: 20}, () => ({
+                x: Math.random()*w, y: Math.random()*h,
+                vx: (Math.random()-0.5)*0.4, vy: (Math.random()-0.5)*0.4
+            }));
+            function draw() {
+                ctx.clearRect(0,0,w,h); ctx.strokeStyle = "rgba(0,51,102,0.1)";
+                pts.forEach(p => {
+                    p.x += p.vx; p.y += p.vy;
+                    if(p.x<0||p.x>w) p.vx*=-1; if(p.y<0||p.y>h) p.vy*=-1;
+                    ctx.beginPath(); ctx.arc(p.x,p.y,2,0,Math.PI*2); ctx.fill();
+                });
+                requestAnimationFrame(draw);
+            }
+            draw();
+
+            const data = [
+                { layout: "full", badge: "Capa", title: "Eletiva: \"O Seguro Morreu de Velho\"", content: "<p style='color: var(--text-muted); font-size: 1.8rem; font-weight: 600;'>Por Prof. Flávia Dutra e Prof. Samuel Sampaio</p>", imgs: [] },
+                { layout: "full", badge: "01", title: "Título da Eletiva", content: "<div class='card'><b>Título da Eletiva:</b> O seguro morreu de velho<br><br><b>1. Componente Curricular:</b> Geografia e Matemática<br><br><b>2. Área de atividade:</b> Responsabilidade Social<br><br><b>3. SUBÁREA:</b> Participação Social</div>", imgs: [] },
+                { layout: "full", badge: "02", title: "OBJETIVO GERAL", content: "<div class='card'>Desenvolver uma compreensão crítica e consciente sobre a segurança pública, capacitando os estudantes a se tornarem cidadãos ativos e responsáveis, que promovam uma cultura de paz, o respeito às normas sociais e aos direitos humanos, contribuindo para a construção de comunidades mais seguras e justas.</div>", imgs: [] },
+                { layout: "full", badge: "03", title: "Objetivos Específicos", content: "<div class='card'>Instruir os alunos sobre seus direitos e deveres, bem como o funcionamento das instituições de segurança pública.<br><br>Incentivar os estudantes a se envolverem em ações comunitárias que visem à melhoria da segurança local e ao fortalecimento do tecido social.</div>", imgs: [] },
+                { layout: "full", badge: "04", title: "Objetivos Específicos", content: "<div class='card'>Fomentar o respeito à diversidade cultural, étnica e social, ajudando os alunos a entenderem a importância da inclusão e do diálogo.<br><br>Abordar questões relacionadas ao bem-estar emocional, regulando que ambientes seguros também sejam aqueles que cuidam da saúde mental dos indivíduos.</div>", imgs: [] },
+                { layout: "full", badge: "05", title: "Segurança Pública", content: "<div class='card'>Segurança pública é o conjunto de ações e políticas que visam garantir a ordem social e a proteção dos cidadãos. É um dever do Estado, mas também um direito e responsabilidade de todos.</div>", imgs: [] },
+                { layout: "full", badge: "06", title: "Reduza Riscos Elétricos", content: "<div class='card'>Use protetores de tomadas, mantenha fiações em bom estado; evite o uso com mãos molhadas. Aprenda primeiros socorros como manobras de desobstrução de vias aéreas e RCP.</div>", imgs: [] },
+                { layout: "full", badge: "07", title: "Metodologia: Palestras", content: "<div class='card'>Palestras com especialista em segurança pública</div>", imgs: [] },
+                { layout: "full", badge: "08", title: "Metodologia: Prática", content: "<div class='card'>Palestra de profissionais da segurança pública e treinamento prático com autoridade de segurança.</div>", imgs: [] },
+                { layout: "split", badge: "09", title: "Instruções de primeiros socorros", content: "<div class='card'>Treinamento intensivo de manobras de emergência e salvamento básico em situações críticas.</div>", imgs: ["assets/slide11.png", "assets/slide11.2.png", "assets/slide11.3.png"] },
+                { layout: "split", badge: "10", title: "Combate a acidentes domésticos", content: "<div class='card'>Identificação de riscos no lar e técnicas de prevenção activa para toda a família e comunidade.</div>", imgs: ["assets/slide12.png", "assets/slide12.2.png", "assets/slide12.3.png"] },
+                { layout: "split", badge: "11", title: "Oficina: construção de pontes", content: "<div class='card'>Desenvolvimento de trabalho em equipa e engenharia básica aplicada à resolução de problemas.</div>", imgs: ["assets/slide13.png", "assets/slide13.1.png", "assets/slide13.2.png", "assets/slide13.3.png", "assets/slide13.4.png"] },
+                { layout: "split", badge: "12", title: "Visita ao 11° Batalhão de Bombeiros", content: "<div class='card'>Experiência prática e visita técnica ao batalhão de Bombeiros em Itapecuru Mirim.</div>", imgs: ["assets/slide14.png", "assets/slide14.1.png", "assets/slide14.2.png", "assets/slide14.3.png", "assets/slide14.4.png"] },
+                { layout: "full", badge: "13", title: "Obrigado!", content: "<div class='card'>Lembre-se: Prevenção é a base da segurança pública! Agradecemos a atenção de todos.</div>", imgs: [] }
+            ];
+
+            const slider = document.getElementById('slider');
+            const counter = document.getElementById('counter');
+            const pBar = document.getElementById('pBar');
+            let idx = 0;
+
+            window.addEventListener('error', function(e) {
+                if (e.target && e.target.tagName === 'IMG') {
+                    const img = e.target;
+                    if (img.dataset.failed) return;
+                    img.dataset.failed = "true";
+                    img.style.display = 'none'; 
+                    const placeholder = document.createElement('div');
+                    placeholder.style.cssText = "width:100%; height:100%; min-height:80px; background:linear-gradient(135deg, #002244 0%, #003366 100%); display:flex; flex-direction:column; align-items:center; justify-content:center; color:#ff8c00; font-family:'Inter',sans-serif; text-align:center; padding:10px; border-radius:12px; border: 1px dashed rgba(255,140,0,0.5);";
+                    const imgName = img.getAttribute('src');
+                    placeholder.innerHTML = `<i class='fa-regular fa-image' style='font-size:1.5rem; margin-bottom:5px;'></i><div style='font-weight:700; font-size:0.8rem;'>Ficheiro:</div><div style='font-family:monospace; background:rgba(0,0,0,0.4); padding:2px 6px; border-radius:4px; font-size:0.7rem; color:#fff;'>${imgName}</div>`;
+                    if (img.parentElement) img.parentElement.appendChild(placeholder);
+                }
+            }, true);
+
+            function build() {
+                slider.innerHTML = '';
+                data.forEach((s, i) => {
+                    const d = document.createElement('div');
+                    d.className = `slide ${i===0?'active':''} ${s.layout}`;
+                    
+                    let visualContent = '';
+                    const imgs = s.imgs || [];
+                    if (imgs.length === 1) {
+                        visualContent = `<div class="visual"><div class="img-single"><img src="${imgs[0]}"></div></div>`;
+                    } else if (imgs.length > 1) {
+                        visualContent = `<div class="visual"><div class="grid-grid ${imgs.length <= 3 ? 'grid-3' : 'grid-5'}">`;
+                        imgs.forEach(url => {
+                            visualContent += `<div class="grid-item"><img src="${url}"></div>`;
+                        });
+                        visualContent += `</div></div>`;
+                    }
+                    d.innerHTML = `<div class="info"><span class="badge">${s.badge}</span><h1>${s.title}</h1>${s.content}</div>${visualContent}`;
+                    slider.appendChild(d);
+                });
+            }
+
+            function move(step) {
+                const slides = document.querySelectorAll('.slide');
+                if (!slides.length) return;
+                slides[idx].classList.remove('active');
+                idx = Math.max(0, Math.min(slides.length - 1, idx + step));
+                slides[idx].classList.add('active');
+                counter.innerText = `${idx + 1} / ${data.length}`;
+                pBar.style.width = `${((idx + 1) / data.length) * 100}%`;
+            }
+
+            document.getElementById('prevBtn').addEventListener('click', () => move(-1));
+            document.getElementById('nextBtn').addEventListener('click', () => move(1));
+
+            const c = document.getElementById('cursor');
+            const f = document.getElementById('cursor-follower');
+            document.onmousemove = e => {
+                c.style.left = e.clientX+'px'; c.style.top = e.clientY+'px';
+                setTimeout(() => { f.style.left = e.clientX+'px'; f.style.top = e.clientY+'px'; }, 40);
+            };
+            document.onkeydown = e => {
+                if(e.key === "ArrowRight" || e.key === " ") move(1);
+                if(e.key === "ArrowLeft") move(-1);
+            };
+            build();
+            pBar.style.width = `${(1 / data.length) * 100}%`;
+        })();
+    </script>
+</body>
+</html>
